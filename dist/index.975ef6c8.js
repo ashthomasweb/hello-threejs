@@ -27198,8 +27198,32 @@ parcelHelpers.defineInteropFlag(exports);
 var _jsxDevRuntime = require("react/jsx-dev-runtime");
 var _react = require("react");
 var _three = require("three");
+var _threeFactoryService = require("../services/threeFactory.service");
+var _threeFactoryServiceDefault = parcelHelpers.interopDefault(_threeFactoryService);
 var _orbitControls = require("../../node_modules/three/examples/jsm/controls/OrbitControls");
+var _neptunemapJpg = require("../../public/neptunemap.jpg");
+var _neptunemapJpgDefault = parcelHelpers.interopDefault(_neptunemapJpg);
+var _solarsystemscopeTexture2KSaturnRingAlphaPng = require("../../public/Solarsystemscope_texture_2k_saturn_ring_alpha.png");
+var _solarsystemscopeTexture2KSaturnRingAlphaPngDefault = parcelHelpers.interopDefault(_solarsystemscopeTexture2KSaturnRingAlphaPng);
 var _s = $RefreshSig$();
+// Vertex shader
+const vertexShader = `
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+// Fragment shader
+const fragmentShader = `
+uniform sampler2D texture;
+varying vec2 vUv;
+
+void main() {
+  gl_FragColor = texture2D(texture, vUv);
+}
+`;
 const Scene = ()=>{
     _s();
     // const loader = new GLTFLoader();
@@ -27211,24 +27235,116 @@ const Scene = ()=>{
         const controls = new (0, _orbitControls.OrbitControls)(camera, renderer.domElement);
         renderer.setSize(window.innerWidth, window.innerHeight);
         sceneRef.current.appendChild(renderer.domElement);
-        camera.position.z = 5;
-        const light = new _three.AmbientLight(0x404040, 0.5); // soft white light
-        const directionalLight = new _three.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 5, 5).normalize();
+        camera.position.z = 10;
+        const light = new _three.AmbientLight(0x404040, 2); // soft white light
         const hemisphereLight = new _three.HemisphereLight(0xffffff, 0x000000, 0.6);
-        const geometry = new _three.BoxGeometry(1, 1, 1);
-        const material = new _three.MeshNormalMaterial({
-            color: 0x00ff00
+        scene.add(light, hemisphereLight);
+        const cube = (0, _threeFactoryServiceDefault.default).createCube([
+            1,
+            1,
+            1
+        ]);
+        const cube2 = (0, _threeFactoryServiceDefault.default).createCube([
+            1.4,
+            1.4,
+            1.4
+        ]);
+        const textureLoader = new _three.TextureLoader();
+        const texture = textureLoader.load((0, _neptunemapJpgDefault.default));
+        const ringTextureLoader = new _three.TextureLoader();
+        const ringTexture = ringTextureLoader.load((0, _solarsystemscopeTexture2KSaturnRingAlphaPngDefault.default));
+        const sphereGeometry = new _three.SphereGeometry(5, 64, 64);
+        const sphereMaterial = new _three.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.7,
+            metalness: 0.5
         });
-        const depth = new _three.MeshDepthMaterial({
-            color: 0x40ff10
+        const sphere = new _three.Mesh(sphereGeometry, sphereMaterial);
+        sphere.castShadow = true;
+        sphere.receiveShadow = true;
+        // Create a shader material
+        const material = new _three.ShaderMaterial({
+            side: _three.DoubleSide,
+            transparent: true,
+            blending: _three.NormalBlending,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: {
+                ringTexture: {
+                    value: ringTexture
+                }
+            },
+            vertexShader: `
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`,
+            fragmentShader: `
+uniform sampler2D ringTexture;
+varying vec2 vUv;
+
+void main() {
+    // Convert UV coordinates to polar coordinates
+    float angle = atan(vUv.y - 0.5, vUv.x - 0.5) + 3.14159265359;
+    float radius = length(vUv - vec2(0.5, 0.5)) * 2.0; // Adjust the multiplier to control the radius
+  
+    // Map polar coordinates to texture coordinates with a 90-degree rotation
+    vec2 circularUV = vec2((angle + 1.57079632679) / (2.0 * 3.14159265359), radius);
+  
+    // Sample the texture with alpha
+    vec4 texColor = texture2D(ringTexture, circularUV);
+    
+    // Use premultiplied alpha blending to correctly handle transparency
+    gl_FragColor = vec4(texColor.rgb * texColor.a, texColor.a);
+}
+`
         });
-        const cube = new _three.Mesh(geometry, material, depth);
-        scene.add(directionalLight, cube, hemisphereLight, light);
+        // Create a ring geometry
+        const ringGeometry = new _three.RingGeometry(8, 12, 64); // Inner radius, outer radius, segments
+        // Create a mesh with the ring geometry and shader material
+        const ringMesh = new _three.Mesh(ringGeometry, material);
+        // Add the ring mesh to the scene
+        scene.add(ringMesh);
+        // // Create a custom shader material for circular texture mapping
+        // const ringMaterial = new THREE.MeshStandardMaterial({
+        //     map: ringTexture,
+        //     side: THREE.DoubleSide, // Render both sides of the geometry
+        //     roughness: 0.7,
+        //     metalness: 0.5,
+        // });
+        // const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        // ring.rotation.x = Math.PI / 2; // Rotate the ring to be horizontal
+        // ring.receiveShadow = true
+        // // ring.castShadow = true
+        // scene.add(ring);
+        const directionalLight = new _three.DirectionalLight(0xffffff, 4);
+        directionalLight.position.set(10, 10, 10); // Adjust the light position
+        directionalLight.target = sphere; // Point the light at the sphere
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = _three.PCFSoftShadowMap;
+        // const centerPoint = new THREE.Object3D()
+        // centerPoint.add(cube)
+        // cube.position.set(2,0,0)
+        // const orbitRadius = 5
+        // const orbitSpeed = 0.04
+        scene.add(sphere);
         function animate() {
             requestAnimationFrame(animate);
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
+            sphere.rotation.x = 0.4;
+            sphere.rotation.y += 0.002;
+            ringMesh.rotation.x = 1.91;
+            ringMesh.rotation.z += 0.01;
+            // cube.rotation.x += 0.01;
+            // cube.rotation.y += 0.01;
+            // cube2.rotation.x += 0.03;
+            // cube2.rotation.y += 0.02;
+            // centerPoint.rotation.y += orbitSpeed;
+            // cube.position.x = Math.cos(centerPoint.rotation.y) * orbitRadius;
+            // cube.position.z = Math.sin(centerPoint.rotation.y) * orbitRadius;
             renderer.render(scene, camera);
         }
         animate();
@@ -27237,7 +27353,7 @@ const Scene = ()=>{
         ref: sceneRef
     }, void 0, false, {
         fileName: "src/components/scene.component.js",
-        lineNumber: 51,
+        lineNumber: 174,
         columnNumber: 9
     }, undefined);
 };
@@ -27252,7 +27368,7 @@ $RefreshReg$(_c, "Scene");
   window.$RefreshReg$ = prevRefreshReg;
   window.$RefreshSig$ = prevRefreshSig;
 }
-},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","three":"ktPTu","../../node_modules/three/examples/jsm/controls/OrbitControls":"7mqRv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru"}],"ktPTu":[function(require,module,exports) {
+},{"react/jsx-dev-runtime":"iTorj","react":"21dqq","three":"ktPTu","../services/threeFactory.service":"eJHfp","../../node_modules/three/examples/jsm/controls/OrbitControls":"7mqRv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","@parcel/transformer-react-refresh-wrap/lib/helpers/helpers.js":"km3Ru","../../public/neptunemap.jpg":"6YshQ","../../public/Solarsystemscope_texture_2k_saturn_ring_alpha.png":"d1Kac"}],"ktPTu":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2023 Three.js Authors
@@ -58112,7 +58228,26 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}],"7mqRv":[function(require,module,exports) {
+},{}],"eJHfp":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _three = require("three");
+class ThreeFactory {
+    createCube(geom) {
+        const geometry = new _three.BoxGeometry(...geom);
+        const material = new _three.MeshNormalMaterial({
+            color: 0x00ff00
+        });
+        const depth = new _three.MeshDepthMaterial({
+            color: 0x40ff10
+        });
+        const cube = new _three.Mesh(geometry, material, depth);
+        return cube;
+    }
+}
+exports.default = new ThreeFactory();
+
+},{"three":"ktPTu","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"7mqRv":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "OrbitControls", ()=>OrbitControls);
@@ -59002,6 +59137,47 @@ function registerExportsForReactRefresh(module1) {
     }
 }
 
-},{"7422ead32dcc1e6b":"786KC"}]},["icZzK","1xC6H","8lqZg"], "8lqZg", "parcelRequire32c1")
+},{"7422ead32dcc1e6b":"786KC"}],"6YshQ":[function(require,module,exports) {
+module.exports = require("31be3627b1930902").getBundleURL("bLxZJ") + "neptunemap.a71cbb8f.jpg" + "?" + Date.now();
+
+},{"31be3627b1930902":"lgJ39"}],"lgJ39":[function(require,module,exports) {
+"use strict";
+var bundleURL = {};
+function getBundleURLCached(id) {
+    var value = bundleURL[id];
+    if (!value) {
+        value = getBundleURL();
+        bundleURL[id] = value;
+    }
+    return value;
+}
+function getBundleURL() {
+    try {
+        throw new Error();
+    } catch (err) {
+        var matches = ("" + err.stack).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^)\n]+/g);
+        if (matches) // The first two stack frames will be this function and getBundleURLCached.
+        // Use the 3rd one, which will be a runtime in the original bundle.
+        return getBaseURL(matches[2]);
+    }
+    return "/";
+}
+function getBaseURL(url) {
+    return ("" + url).replace(/^((?:https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/.+)\/[^/]+$/, "$1") + "/";
+}
+// TODO: Replace uses with `new URL(url).origin` when ie11 is no longer supported.
+function getOrigin(url) {
+    var matches = ("" + url).match(/(https?|file|ftp|(chrome|moz|safari-web)-extension):\/\/[^/]+/);
+    if (!matches) throw new Error("Origin not found");
+    return matches[0];
+}
+exports.getBundleURL = getBundleURLCached;
+exports.getBaseURL = getBaseURL;
+exports.getOrigin = getOrigin;
+
+},{}],"d1Kac":[function(require,module,exports) {
+module.exports = require("487956037eb965").getBundleURL("bLxZJ") + "Solarsystemscope_texture_2k_saturn_ring_alpha.2ed375a4.png" + "?" + Date.now();
+
+},{"487956037eb965":"lgJ39"}]},["icZzK","1xC6H","8lqZg"], "8lqZg", "parcelRequire32c1")
 
 //# sourceMappingURL=index.975ef6c8.js.map
