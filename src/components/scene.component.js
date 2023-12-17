@@ -3,18 +3,12 @@ import {
     useRef
 } from 'react'
 import * as THREE from 'three'
-import ThreeFactory from '../services/threeFactory.service'
-
 import {
     OrbitControls
 } from '../../node_modules/three/examples/jsm/controls/OrbitControls'
-import Neptune from '../../public/neptunemap.jpg'
-import SaturnRings from '../../public/Solarsystemscope_texture_2k_saturn_ring_alpha.png'
-import {
-    ringVertexShader,
-    ringFragmentShader,
-    ringShaderWithShadow
-} from '../glsl'
+
+import ThreeFactory from '../services/threeFactory.service'
+import NeptuneTexture from '../../public/neptunemap.jpg'
 
 const Scene = () => {
 
@@ -34,16 +28,10 @@ const Scene = () => {
 
         const light = new THREE.AmbientLight(0x404040, 0.5) // soft white light
         light.castShadow = true
-        // light.shadow.camera.near = 0.5
-        // light.shadow.camera.far = 100
         const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.6)
         const directionalLight = new THREE.DirectionalLight(0x9999ff, 4)
         directionalLight.position.set(20, 10, 30) // Adjust the light position
         directionalLight.castShadow = true
-        // directionalLight.shadow.camera.near = 1.5
-        // directionalLight.shadow.camera.far = 200
-
-        // TEST
         directionalLight.shadow.camera.left = -50;
         directionalLight.shadow.camera.right = 50;
         directionalLight.shadow.camera.top = 50;
@@ -52,7 +40,6 @@ const Scene = () => {
         directionalLight.shadow.mapSize.height = 4096 * 4;
         directionalLight.shadow.camera.near = 1;
         directionalLight.shadow.camera.far = 200;
-        // END
 
         const sunLight = new THREE.PointLight(0xffffff, 1, 0, 2); // Color, intensity, distance, decay
         sunLight.position.set(0, 0, 0); // Position the light at the center of the scene (representing the sun)
@@ -61,98 +48,59 @@ const Scene = () => {
 
         scene.add(hemisphereLight, directionalLight)
 
-
-
-
         /* Planet */
-        const neptuneTextureLoader = new THREE.TextureLoader()
-        const neptuneTexture = neptuneTextureLoader.load(Neptune)
-        const sphereGeometry = new THREE.SphereGeometry(5, 64, 64)
-        const sphereMaterial = new THREE.MeshStandardMaterial({
-            map: neptuneTexture,
+        const neptuneOptions = {
+            texture: NeptuneTexture,
+            geometry: [5, 64, 64],
             roughness: 0.7,
-            metalness: 0.5
-        })
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
-        sphere.castShadow = true
-        sphere.receiveShadow = true
-        scene.add(sphere)
+            metalness: 0.5,
+        }
+        const neptune = ThreeFactory.createPlanet(neptuneOptions)
+        scene.add(neptune)
 
-        /* Moon */
-        // const moonTextureLoader = new THREE.TextureLoader()
-        // const moonTexture = moonTextureLoader.load(MoonTexture)
-        const moonGeometry = new THREE.SphereGeometry(.6, 32, 32)
-        const moonMaterial = new THREE.MeshStandardMaterial({
-            // map: moonTexture,
+        /* Moons */
+        const moon1Options = {
+            texture: null,
             color: '0x4444dd',
+            geometry: [.6, 32, 32],
             roughness: 0.5,
-            metalness: 0.2
-        })
-        const moon = new THREE.Mesh(moonGeometry, moonMaterial)
-        moon.castShadow = true
-        moon.receiveShadow = true
-        const moonOrbitRadius = 14
-        const moonOrbitSpeed = 0.005
-        scene.add(moon)
+            metalness: 0.2,
+            orbitRadius: 14,
+            orbitSpeed: 0.004
+        }
+        const moon1 = ThreeFactory.createMoon(moon1Options)
+
+        const moon2Options = {
+            texture: null,
+            color: '0x0044dd',
+            geometry: [.3, 32, 32],
+            roughness: 1,
+            metalness: 1,
+            orbitRadius: 19,
+            orbitSpeed: 0.002
+        }
+        const moon2 = ThreeFactory.createMoon(moon2Options)
+        
+        const moon3Options = {
+            texture: NeptuneTexture,
+            color: '0x0044dd',
+            geometry: [.8, 32, 32],
+            roughness: 1,
+            metalness: 1,
+            orbitRadius: 25,
+            orbitSpeed: 0.001
+        }
+        const moon3 = ThreeFactory.createMoon(moon3Options)
+
+        scene.add(moon1, moon2, moon3)
 
 
-        /* Ring */
-        const ringTextureLoader = new THREE.TextureLoader()
-        const ringTexture = ringTextureLoader.load(SaturnRings)
-        const ringGeometry = new THREE.RingGeometry(8, 12, 64)
-        const ringMaterial = new THREE.ShaderMaterial({
-            side: THREE.DoubleSide,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            uniforms: {
-                ringTexture: {
-                    value: ringTexture
-                },
-            },
-            vertexShader: ringVertexShader,
-            fragmentShader: ringFragmentShader,
-            shadowSide: THREE.DoubleSide,
-            receiveShadow: true,
-            flatShading: true,
-            opacity: 0.5
-        })
-        const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial)
-        ringMesh.castShadow = true
-        ringMesh.receiveShadow = true
-        // scene.add(ringMesh)
-
-        const ringMesh2 = new THREE.Mesh(ringGeometry, ringMaterial)
-        ringMesh2.castShadow = true
-        ringMesh2.receiveShadow = true
-        // scene.add(ringMesh2)
-
-        // TEST
-        const ringShadowGeometry = new THREE.RingGeometry(8, 12, 64)
-        const newRingMaterial = new THREE.MeshNormalMaterial({
-            color: new THREE.Color("rgba(0, 0, 100, 1)"), // Set a color for debugging purposes
-            // blending: THREE.NormalBlending,
-            // shadowSide: THREE.DoubleSide,
-            receiveShadow: true,
-            // flatShading: true,
-            transparent: true,
-            opacity: .02, // Adjust opacity for transparency
-            side: THREE.DoubleSide,
-        })
-        const ringShadow = new THREE.Mesh(ringShadowGeometry, newRingMaterial)
-        ringShadow.castShadow = true
-        ringShadow.receiveShadow = true
-        // scene.add(ringShadow)
-
-        // END
-
+        /* Torus Rings */
         const torusMaterial = new THREE.MeshStandardMaterial({
             color: new THREE.Color("rgba(0, 65, 150, 1)"), // Set a color for debugging purposes
-            // blending: THREE.NormalBlending,
-            // shadowSide: THREE.DoubleSide,s
             receiveShadow: true,
-            // flatShading: true,
             transparent: true,
-            opacity: 1, // Adjust opacity for transparency
+            opacity: 1,
             side: THREE.DoubleSide,
         })
         const torusGeometry = new THREE.TorusGeometry(8, .005, 16, 100);
@@ -201,9 +149,6 @@ const Scene = () => {
             [11.5, .01, 100, 300],
             [11.55, .01, 100, 300],
             [12, .01, 100, 300],
-
-
-
         ]
         let torusGroup = []
         torusArray.forEach(ring => {
@@ -212,63 +157,52 @@ const Scene = () => {
             entry.receiveShadow = true
             entry.rotation.x = 1.9
             torusGroup.push(entry)
-
         })
         const torus = new THREE.Mesh(torusGeometry, torusMaterial);
         torus.castShadow = true
         torus.receiveShadow = true
-
-        // Add the torus to the scene
         scene.add(torus, ...torusGroup);
 
-
-
-
-
-        directionalLight.target = sphere // Point the light at the sphere
+        directionalLight.target = neptune
 
         function animate() {
             requestAnimationFrame(animate)
 
-            sphere.rotation.x = 0.4
-            sphere.rotation.y += 0.002
-            ringMesh.rotation.x = 1.91
-            ringShadow.rotation.x = 1.91
-            // ringShadow.position.z = -0.01
+            neptune.rotation.x = 0.4
+            neptune.rotation.y += 0.002
 
-            ringMesh2.rotation.x = 1.91
-            ringMesh2.position.z = -0.02
             torus.rotation.x = 1.91
 
-            moon.rotation.y += moonOrbitSpeed
+            moon1.rotation.y += moon1.orbitSpeed
+            moon2.rotation.y += moon2.orbitSpeed
+            moon3.rotation.y += moon3.orbitSpeed
 
-            // Update moon position based on a 45-degree angle orbit
-            const angle = moon.rotation.y;
-            const z = Math.cos(angle) * moonOrbitRadius;
-            const x = Math.sin(angle) * Math.sin(45 * (Math.PI / 180)) * moonOrbitRadius;
-            const y = Math.sin(angle) * Math.cos(45 * (Math.PI / 180)) * moonOrbitRadius;
-            moon.position.set(x, y, z);
-            // cube.rotation.x += 0.01
-            // cube.rotation.y += 0.01
-            // cube2.rotation.x += 0.03
-            // cube2.rotation.y += 0.02
 
-            // centerPoint.rotation.y += orbitSpeed
-            // cube.position.x = Math.cos(centerPoint.rotation.y) * orbitRadius
-            // cube.position.z = Math.sin(centerPoint.rotation.y) * orbitRadius
+            const angle = moon1.rotation.y;
+            const z = Math.cos(angle) * moon1.orbitRadius;
+            const x = Math.sin(angle) * Math.sin(45 * (Math.PI / 180)) * moon1.orbitRadius;
+            const y = Math.sin(angle) * Math.cos(45 * (Math.PI / 180)) * moon1.orbitRadius;
+            moon1.position.set(x, y, z);
+            moon1.rotation.y += moon1.orbitSpeed
+
+            const angle2 = moon2.rotation.y;
+            const y2 = Math.cos(angle2) * moon2.orbitRadius;
+            const x2 = Math.sin(angle2) * Math.sin(45 * (Math.PI / 180)) * moon2.orbitRadius;
+            const z2 = Math.sin(angle2) * Math.cos(45 * (Math.PI / 180)) * moon2.orbitRadius;
+            moon2.position.set(x2, y2, z2);
+
+            const angle3 = moon3.rotation.y;
+            const y3 = Math.cos(angle3) * moon3.orbitRadius;
+            const x3 = Math.sin(angle3) * Math.sin(70 * (Math.PI / 180)) * moon3.orbitRadius;
+            const z3 = Math.sin(angle3) * Math.cos(70 * (Math.PI / 180)) * moon3.orbitRadius;
+            moon3.position.set(x3, y3, z3);
 
             renderer.render(scene, camera)
         }
         animate()
     }, [])
 
-    return ( <
-        div ref = {
-            sceneRef
-        }
-        />
-    )
-
+    return <div ref={sceneRef} />
 }
 
 export default Scene
