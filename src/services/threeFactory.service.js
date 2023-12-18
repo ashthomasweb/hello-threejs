@@ -25,8 +25,17 @@ class ThreeFactory {
         return sphere
     }
 
+    // NEW
+    // createMoons(moonOptionArray) {
+    //     const moons = []
+    //     moonOptionArray.forEach(moonOptions => {
+    //         moons.push(this.createMoon(moonOptions))
+    //     })
+    //     return moons
+    // }
+    // END
+
     createMoon(options) {
-        console.log(options)
         const moonTextureLoader = new THREE.TextureLoader()
         const moonTexture = options.texture ? moonTextureLoader.load(options.texture) : null
         const moonGeometry = new THREE.SphereGeometry(...options.geometry)
@@ -39,37 +48,35 @@ class ThreeFactory {
         const moon = new THREE.Mesh(moonGeometry, moonMaterial)
         moon.castShadow = true
         moon.receiveShadow = true
-        moon.orbitRadius = options.orbitRadius
-        moon.orbitSpeed = options.orbitSpeed
         moon.options = options
-        // moon.rotation[options.axialRotation.axis] = options.axialRotation.speed
-        console.log(moon)
         return moon
     }
 
-    setMoonOrbitAndPosition(moon, rotation) {
-        // console.log(moon)
-        // moon.rotation.y += moon.orbitSpeed
-        // const angle = moon.orbitSpeed
-        let x = {
-            axis: 'x',
-            value: null
+    setMoonOrbitAndPosition(moon) {
+        const orbit = moon.options.orbit
+        const position = moon.options.positionCounter
+
+        const primaryAxis = Math.sin(position) * Math.sin(orbit.angle * (Math.PI / 180)) * orbit.radius
+        const secondaryAxis = Math.sin(position) * Math.cos(orbit.angle * (Math.PI / 180)) * orbit.radius
+        const tertiaryAxis = Math.cos(position) * orbit.radius
+
+        let axes = {
+            x: null,
+            y: null,
+            z: null
         }
-        let y = {
-            axis: 'y',
-            value: null
-        }
-        let z = {
-            axis: 'z',
-            value: null
-        }
-        const positionArray = [x, y, z]
-        positionArray.forEach(axis => {
-            const factor = moon.rotationalAxis === axis.axis ? moon.orbitRadius : Math.sin(moon.orbitalAngle * (Math.PI / 180)) * moon.orbitRadius
-            axis.value = `${Math.cos(rotation.y) * factor}`
-        })
-        // console.log(x.value, y.value, z.value)
-        return [x.value, y.value, z.value]
+
+        axes[orbit.primaryAxis] = primaryAxis
+        axes[orbit.secondaryAxis] = secondaryAxis
+        axes[orbit.tertiaryAxis] = tertiaryAxis
+
+        return [axes.x, axes.y, axes.z]
+    }
+
+    animateMoon(moon) {
+        moon.rotation[moon.options.axialRotation.axis] += moon.options.axialRotation.speed
+        moon.options.positionCounter -= moon.options.orbit.speed
+        moon.position.set(...this.setMoonOrbitAndPosition(moon))
     }
 }
 

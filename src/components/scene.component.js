@@ -65,40 +65,44 @@ const Scene = () => {
             geometry: [2, 32, 32],
             roughness: 0.5,
             metalness: 0.4,
-            orbitRadius: 14,
-            orbitSpeed: 0.01,
-            orbitalAngle: 45,
-            rotationalAxis: 'z',
-            axialRotation: {
+            orbit: {
+                primaryAxis: 'x',
+                secondaryAxis: 'z',
+                tertiaryAxis: 'y',
+                radius: 20,
+                speed: 0.02,
+                angle: 90, // degree of tilt from secondary axis
+            },
+            axialRotation: { // rotation of the body itself
                 axis: 'z',
                 speed: 0.1 // set to the same value as orbitSpeed for tidal locking
-            }
+            },
+            positionCounter: 0
         }
         const moon1 = ThreeFactory.createMoon(moon1Options)
 
         const moon2Options = {
-            texture: null,
-            color: '0x0044dd',
-            geometry: [.3, 32, 32],
-            roughness: 1,
-            metalness: 1,
-            orbitRadius: 19,
-            orbitSpeed: 0.002
-        }
-        // const moon2 = ThreeFactory.createMoon(moon2Options)
-
-        const moon3Options = {
             texture: NeptuneTexture,
-            color: '0x0044dd',
-            geometry: [.8, 32, 32],
-            roughness: 1,
-            metalness: 1,
-            orbitRadius: 25,
-            orbitSpeed: 0.001
+            color: '0x4444dd',
+            geometry: [1, 32, 32],
+            roughness: 0.5,
+            metalness: 0.9,
+            orbit: {
+                primaryAxis: 'z',
+                secondaryAxis: 'x',
+                tertiaryAxis: 'y',
+                radius: 10,
+                speed: 0.1,
+                angle: 30, // degree of tilt from secondary axis
+            },
+            axialRotation: { // rotation of the body itself
+                axis: 'y',
+                speed: 0.1 // set to the same value as orbitSpeed for tidal locking
+            },
+            positionCounter: 0
         }
-        // const moon3 = ThreeFactory.createMoon(moon3Options)
-
-        scene.add(moon1)
+        const moon2 = ThreeFactory.createMoon(moon2Options)
+        scene.add(moon1, moon2)
 
 
         /* Torus Rings */
@@ -109,8 +113,6 @@ const Scene = () => {
             opacity: 1,
             side: THREE.DoubleSide,
         })
-        const torusGeometry = new THREE.TorusGeometry(8, .005, 16, 100)
-
         const torusArray = [
             [8, .001, 100, 300],
             [8.1, .002, 100, 300],
@@ -161,59 +163,45 @@ const Scene = () => {
             let entry = new THREE.Mesh(new THREE.TorusGeometry(...ring), torusMaterial)
             entry.castShadow = true
             entry.receiveShadow = true
-            entry.rotation.x = 1.9
+            entry.rotation.x = 1.58
             torusGroup.push(entry)
         })
-        const torus = new THREE.Mesh(torusGeometry, torusMaterial)
-        torus.castShadow = true
-        torus.receiveShadow = true
-        scene.add(torus, ...torusGroup)
+        scene.add(...torusGroup)
 
         directionalLight.target = neptune
 
-        let moon1Position = 0
+        // let moon1Position = 0
         function animate() {
             requestAnimationFrame(animate)
 
-            neptune.rotation.x = 0.4
+            neptune.rotation.x = 0
             neptune.rotation.y += 0.009
 
-            neptune.position.x += 0.01
+            // neptune.position.x += 0.01 // move the planet
+            // torusGroup.forEach(ring => {
+                // ring.position.x = neptune.position.x // move rings with planet
+            // })
 
-            torus.rotation.x = 1.91
-            // torus.position.x += neptune.position.x
-            torusGroup.forEach(ring => {
-                ring.position.x = neptune.position.x
-            })
+            // moon1.rotation[moon1.options.axialRotation.axis] += moon1.options.axialRotation.speed
+            // moon1.options.positionCounter -= moon1.orbitSpeed
+            // moon1.position.set(...ThreeFactory.setMoonOrbitAndPosition(moon1))
+            ThreeFactory.animateMoon(moon1)
+            ThreeFactory.animateMoon(moon2)
 
-            moon1.rotation[moon1.options.axialRotation.axis] += moon1.options.axialRotation.speed
-            moon1Position -= moon1.orbitSpeed
+            /* 
+            NOTE: The Primary and Secondary axis both pass through the CENTER of the orbit.
+            The Primary is orbited around evenly.
+            The Secondary is the degree of tilt away from 0.
+            The Tertiary axis is intersected directly by the body, twice, along the axis.
+            */
 
-            // moon2.rotation.y += moon2.orbitSpeed
-            // moon3.rotation.y += moon3.orbitSpeed
+            // const positionCounter = moon1Position
+            // const x = Math.cos(positionCounter) * moon1.orbitRadius // tertiary axis
+            // const y = Math.sin(positionCounter) * Math.sin(20 * (Math.PI / 180)) * moon1.orbitRadius // primary axis
+            // const z = Math.sin(positionCounter) * Math.cos(20 * (Math.PI / 180)) * moon1.orbitRadius // secondary axis
 
-
-            // ThreeFactory.setMoonOrbitAndPosition(moon1)
-            const positionCounter = moon1Position
-            const x = Math.cos(positionCounter) * moon1.orbitRadius
-            const y = Math.sin(positionCounter) * Math.sin(-30 * (Math.PI / 180)) * moon1.orbitRadius // primary axis
-            const z = Math.sin(positionCounter) * Math.cos(-30 * (Math.PI / 180)) * moon1.orbitRadius
-            moon1.position.set(x + neptune.position.x, y, z)
-
-
-            // moon1.position.set(...ThreeFactory.setMoonOrbitAndPosition(moon1Options, moon1.rotation))
-
-            // const angle2 = moon2.rotation.y
-            // const y2 = Math.cos(angle2) * moon2.orbitRadius
-            // const x2 = Math.sin(angle2) * Math.sin(45 * (Math.PI / 180)) * moon2.orbitRadius
-            // const z2 = Math.sin(angle2) * Math.cos(45 * (Math.PI / 180)) * moon2.orbitRadius
-            // moon2.position.set(x2, y2, z2)
-
-            // const angle3 = moon3.rotation.y
-            // const y3 = Math.cos(angle3) * moon3.orbitRadius
-            // const x3 = Math.sin(angle3) * Math.sin(70 * (Math.PI / 180)) * moon3.orbitRadius
-            // const z3 = Math.sin(angle3) * Math.cos(70 * (Math.PI / 180)) * moon3.orbitRadius
-            // moon3.position.set(x3, y3, z3)
+            // moon1.position.set(x, y, z)
+            // moon1.position.set(x + x2, y + y2, z + z2) // for adding complex tilts. Additional orbital angles must be assigned.
 
             renderer.render(scene, camera)
         }
