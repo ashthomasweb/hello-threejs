@@ -26,6 +26,7 @@ class ThreeFactory {
     }
 
     createMoon(options) {
+        console.log(options)
         const moonTextureLoader = new THREE.TextureLoader()
         const moonTexture = options.texture ? moonTextureLoader.load(options.texture) : null
         const moonGeometry = new THREE.SphereGeometry(...options.geometry)
@@ -40,7 +41,35 @@ class ThreeFactory {
         moon.receiveShadow = true
         moon.orbitRadius = options.orbitRadius
         moon.orbitSpeed = options.orbitSpeed
+        moon.options = options
+        // moon.rotation[options.axialRotation.axis] = options.axialRotation.speed
+        console.log(moon)
         return moon
+    }
+
+    setMoonOrbitAndPosition(moon, rotation) {
+        // console.log(moon)
+        // moon.rotation.y += moon.orbitSpeed
+        // const angle = moon.orbitSpeed
+        let x = {
+            axis: 'x',
+            value: null
+        }
+        let y = {
+            axis: 'y',
+            value: null
+        }
+        let z = {
+            axis: 'z',
+            value: null
+        }
+        const positionArray = [x, y, z]
+        positionArray.forEach(axis => {
+            const factor = moon.rotationalAxis === axis.axis ? moon.orbitRadius : Math.sin(moon.orbitalAngle * (Math.PI / 180)) * moon.orbitRadius
+            axis.value = `${Math.cos(rotation.y) * factor}`
+        })
+        // console.log(x.value, y.value, z.value)
+        return [x.value, y.value, z.value]
     }
 }
 
